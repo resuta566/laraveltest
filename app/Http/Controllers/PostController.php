@@ -8,6 +8,12 @@ use DB;
 
 class PostController extends Controller
 {
+
+    public function __construct()
+    {
+        $this->middleware('auth', ['except' => ['index', 'show']]);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -35,6 +41,12 @@ class PostController extends Controller
      */
     public function create()
     {
+        $this->validate($request, [
+            'title' => 'required',
+            'body' => 'required',
+            'cover_image' => 'image|nullable|max:1999'
+        ]);
+        
         return view('post.create');
     }
 
@@ -51,9 +63,27 @@ class PostController extends Controller
             'body' => 'required'
         ]);
 
+         // Handle File Upload
+         if($request->hasFile('cover_image')){
+            // Get filename with the extension
+            $filenameWithExt = $request->file('cover_image')->getClientOriginalName();
+            // Get just filename
+            $filename = pathinfo($filenameWithExt, PATHINFO_FILENAME);
+            // Get just ext
+            $extension = $request->file('cover_image')->getClientOriginalExtension();
+            // Filename to store
+            $fileNameToStore= $filename.'_'.time().'.'.$extension;
+            // Upload Image
+            $path = $request->file('cover_image')->storeAs('public/cover_images', $fileNameToStore);
+        } else {
+            $fileNameToStore = 'noimage.jpg';
+        }
+
         $post = new Post;
         $post->title = $request->input('title');
         $post->body = $request->input('body');
+        $post->user_id = auth()->user()->id;
+        $post->cover_image = $fileNameToStore;
         $post->save();
         
         return redirect('/post')->with('success', 'Post Created');
@@ -79,7 +109,18 @@ class PostController extends Controller
      */
     public function edit($id)
     {
+
         $post = Post::find($id);
+
+        //Check if post exists before deleting
+        if (!isset($post)){
+            return redirect('/posts')->with('error', 'No Post Found');
+        }
+
+        if(auth()->user()->id !== $post->user_id){
+            return redirect('/post')->with('error', 'Unauthorized Page!');
+        }
+
         return view('post.edit')->with('post', $post);
     }
 
@@ -94,12 +135,35 @@ class PostController extends Controller
     {
         $this->validate($request,[
             'title' => 'required',
-            'body' => 'required'
+            'body' => 'required',
+            'cover_image' => 'image|nullable|max:1999'
         ]);
 
+       // Handle File Upload
+       if($request->hasFile('cover_image')){
+        // Get filename with the extension
+        $filenameWithExt = $request->file('cover_image')->getClientOriginalName();
+        // Get just filename
+        $filename = pathinfo($filenameWithExt, PATHINFO_FILENAME);
+        // Get just ext
+        $extension = $request->file('cover_image')->getClientOriginalExtension();
+        // Filename to store
+        $fileNameToStore= $filename.'_'.time().'.'.$extension;
+        // Upload Image
+        $path = $request->file('cover_image')->storeAs('public/cover_images', $fileNameToStore);
+    }
+
         $post = Post::find($id);
+
+        if(auth()->user()->id !== $post->user_id){
+            return redirect('/post')->with('error', 'Unauthorized Page!');
+        }
+
         $post->title = $request->input('title');
         $post->body = $request->input('body');
+        if($request->hasFile('cover_image')){
+            $post->cover_image = $fileNameToStore;
+        }
         $post->save();
         
         return redirect('/post')->with('success', 'Post Updated');
@@ -114,6 +178,21 @@ class PostController extends Controller
     public function destroy($id)
     {
         $post = Post::find($id);
+
+        //Check if post exists before deleting
+        if (!isset($post)){
+            return redirect('/posts')->with('error', 'No Post Found');
+        }
+
+        if(auth()->user()->id !== $post->user_id){
+            return redirect('/post')->with('error', 'Unauthorized Page!');
+        }
+
+        if($post->cover_image != 'noimage.jpg'){
+            // Delete Image
+            Storage::delete('public/cover_images/'.$post->cover_image);
+        }
+
         $post->delete();
 
         return redirect('/post')->with('success', 'Post Deleted');

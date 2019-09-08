@@ -5,7 +5,7 @@
         <h1>Edit POST</h1>
     </div>
     <div class='container'>
-            {!! Form::open(['action' => ['PostController@update', $post->id], 'method' => 'POST']) !!}
+            {!! Form::open(['action' => ['PostController@update', $post->id], 'method' => 'POST', 'enctype' => 'multipart/form-data]) !!}
                 <div class="form-group">
                     {{Form::label('title','Title')}}
                     {{Form::text('title', $post->title,
@@ -25,10 +25,13 @@
                             ])
                         }}
                     </div>
+                    <div class="form-group">
+                            {{Form::file('cover_image')}}
+                        </div>
                     {{Form::hidden('_method','PUT')}}
-                {{Form::submit('Submit', [
-                    'class' => 'btn btn-primary'
-                ])}}
+                    {{Form::submit('Submit', [
+                        'class' => 'btn btn-primary'
+                    ])}}
             {!! Form::close() !!}
     </div>
 @endsection
